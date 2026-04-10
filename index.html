@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Daily HQ Dashboard</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #0d0d0d; color: #fff; font-family: 'Segoe UI', Arial, sans-serif; min-height: 100vh; padding: 16px; }
+    .top-bar { display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid #ff6a00; padding-bottom: 10px; margin-bottom: 18px; flex-wrap: wrap; gap: 8px; }
+    .top-bar h1 { font-size: 22px; color: #ff6a00; letter-spacing: 2px; text-transform: uppercase; font-weight: 700; }
+    .top-bar .meta { font-size: 12px; color: #666; }
+    .refresh-btn { background: transparent; border: 1px solid #ff6a00; color: #ff6a00; border-radius: 4px; padding: 5px 14px; font-size: 12px; cursor: pointer; text-transform: uppercase; letter-spacing: 1px; }
+    .refresh-btn:hover { background: #ff6a0022; }
+    .sec-label { font-size: 10px; letter-spacing: 3px; color: #ff6a00; text-transform: uppercase; font-weight: 700; margin-bottom: 8px; border-left: 3px solid #ff6a00; padding-left: 8px; }
+    .section { margin-bottom: 22px; }
+    .card { background: #181818; border: 1px solid #2a2a2a; border-radius: 8px; padding: 12px 14px; margin-bottom: 8px; }
+    .card.hot { border-left: 3px solid #ff6a00; border-radius: 0 8px 8px 0; }
+    .card-title { font-size: 13px; font-weight: 500; color: #fff; line-height: 1.4; margin-bottom: 5px; }
+    .card-meta { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    .tag { font-size: 10px; background: #ff6a0018; color: #ff6a00; border: 1px solid #ff6a0040; border-radius: 3px; padding: 1px 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .tag.green { background: #1a3a1a; color: #4caf50; border-color: #4caf5040; }
+    .tag.red { background: #3a1a1a; color: #f44336; border-color: #f4433640; }
+    .tag.blue { background: #1a1a3a; color: #5b8dee; border-color: #5b8dee40; }
+    .tag.gray { background: #222; color: #888; border-color: #444; }
+    .muted { font-size: 11px; color: #555; }
+    .weather-row { display: flex; align-items: center; gap: 14px; }
+    .w-icon { font-size: 36px; }
+    .w-temp { font-size: 34px; font-weight: 700; }
+    .w-desc { font-size: 13px; color: #ff6a00; text-transform: capitalize; margin-bottom: 3px; }
+    .w-extras { display: flex; gap: 14px; }
+    .w-extras span { font-size: 11px; color: #666; }
+    .sp-price { font-size: 30px; font-weight: 700; color: #fff; }
+    .sp-change { font-size: 15px; font-weight: 600; margin-left: 10px; }
+    .sp-change.up { color: #4caf50; }
+    .sp-change.down { color: #f44336; }
+    .sp-label { font-size: 11px; color: #555; margin-top: 4px; }
+    .game-card { background: #181818; border: 1px solid #2a2a2a; border-radius: 8px; padding: 10px 14px; margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between; }
+    .teams { display: flex; flex-direction: column; gap: 4px; flex: 1; }
+    .team-row { display: flex; align-items: center; justify-content: space-between; }
+    .team-name { font-size: 13px; color: #aaa; }
+    .team-score { font-size: 15px; font-weight: 700; color: #ccc; min-width: 28px; text-align: right; }
+    .team-row.winner .team-name { color: #fff; }
+    .team-row.winner .team-score { color: #fff; }
+    .game-status { font-size: 10px; color: #ff6a00; text-transform: uppercase; letter-spacing: 1px; min-width: 60px; text-align: right; }
+    .loading { color: #444; font-size: 12px; padding: 16px; text-align: center; }
+    .err { color: #f44336; font-size: 11px; padding: 8px; }
+    .yt-views { font-size: 11px; color: #888; }
+    @media (max-width: 500px) { .top-bar h1 { font-size: 17px; } .sp-price { font-size: 24px; } }
+  </style>
+</head>
+<body>
+
+  <div class="top-bar">
+    <h1>Daily HQ</h1>
+    <div style="display:flex;align-items:center;gap:10px;">
+      <span class="meta" id="dateStr"></span>
+      <button class="refresh-btn" onclick="loadAll()">Refresh</button>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="sec-label">Weather — Concord, CA</div>
+    <div class="card" id="weatherArea"><div class="loading">Loading...</div></div>
+  </div>
+
+  <div class="section">
+    <div class="sec-label">S&amp;P 500</div>
+    <div class="card" id="spArea"><div class="loading">Loading...</div></div>
+  </div>
+
+  <div class="section">
+    <div class="sec-label">NBA — Recent Results</div>
+    <div id="nbaArea"><div class="loading">Loading...</div></div>
+  </div>
+
+  <div class="section">
+    <div class="sec-label">NFL — Latest News</div>
+    <div id="nflArea"><div class="loading">Loading...</div></div>
+  </div>
+
+  <div class="section">
+    <div class="sec-label">Madden Gameplay — YouTube Intel</div>
+    <div id="ytArea"><div class="loading">Loading...</div></div>
+  </div>
+
+  <script>
+    document.getElementById('dateStr').textContent = new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'});
+
+    async function callAPI(prompt) {
+      const res = await fetch('/api/data', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt })
+      });
+      const data = await res.json();
+      return data.result;
+    }
+
+    async function loadWeather() {
+      const el = document.getElementById('weatherArea');
+      try {
+        const res = await fetch('https://api.open-meteo.com/v1/forecast?latitude=37.9779&longitude=-122.0311&current=temperature_2m,relative_humidity_2m,wind_speed_10m,weather_code&temperature_unit=fahrenheit&wind_speed_unit=mph&timezone=America%2FLos_Angeles');
+        const d = await res.json(); const c = d.current;
+        const icons={0:'☀️',1:'🌤️',2:'⛅',3:'☁️',45:'🌫️',48:'🌫️',51:'🌦️',53:'🌦️',55:'🌧️',61:'🌧️',63:'🌧️',65:'🌧️',71:'❄️',73:'❄️',75:'❄️',80:'🌦️',81:'🌧️',82:'⛈️',95:'⛈️',99:'⛈️'};
+        const descs={0:'Clear sky',1:'Mainly clear',2:'Partly cloudy',3:'Overcast',45:'Foggy',48:'Icy fog',51:'Light drizzle',53:'Drizzle',55:'Heavy drizzle',61:'Light rain',63:'Rain',65:'Heavy rain',71:'Light snow',73:'Snow',75:'Heavy snow',80:'Showers',81:'Heavy showers',82:'Violent showers',95:'Thunderstorm',99:'Thunderstorm + hail'};
+        const temp=Math.round(c.temperature_2m), hum=Math.round(c.relative_humidity_2m), wind=Math.round(c.wind_speed_10m);
+        const icon=icons[c.weather_code]||'🌡️', desc=descs[c.weather_code]||'Unknown';
+        el.innerHTML=`<div class="weather-row"><div class="w-icon">${icon}</div><div><div class="w-temp">${temp}°F</div><div class="w-desc">${desc}</div><div class="w-extras"><span>Humidity: ${hum}%</span><span>Wind: ${wind} mph</span></div></div></div>`;
+      } catch(e){ el.innerHTML=`<div class="err">Could not load weather.</div>`; }
+    }
+
+    async function loadSP() {
+      const el = document.getElementById('spArea');
+      try {
+        const raw = await callAPI(`Search the web for the current S&P 500 index price and today's change. Return ONLY a JSON object with keys: price (number, no commas), change (number, can be negative), changePct (number, can be negative), status (string: "open" or "closed"). No markdown, no backticks.`);
+        const d = JSON.parse(raw);
+        const up = d.change >= 0;
+        el.innerHTML=`<div><span class="sp-price">${Number(d.price).toLocaleString()}</span><span class="sp-change ${up?'up':'down'}">${up?'▲':'▼'} ${Math.abs(Number(d.change)).toFixed(2)} (${Math.abs(Number(d.changePct)).toFixed(2)}%)</span></div><div class="sp-label">S&amp;P 500 &nbsp;·&nbsp; Market ${d.status}</div>`;
+      } catch(e){ el.innerHTML=`<div class="err">Could not load S&P 500 data.</div>`; }
+    }
+
+    async function loadNBA() {
+      const el = document.getElementById('nbaArea');
+      try {
+        const raw = await callAPI(`Search the web for the most recent NBA game results from today or yesterday. Return ONLY a JSON array (no markdown, no backticks) of up to 5 games, each with keys: home (team name), homeScore (number), away (team name), awayScore (number), status (e.g. "Final" or "Live" or "Scheduled"), winner (home or away or null).`);
+        const games = JSON.parse(raw);
+        el.innerHTML = games.map(g=>{
+          const homeWin=g.winner==='home', awayWin=g.winner==='away';
+          return `<div class="game-card"><div class="teams"><div class="team-row ${awayWin?'winner':''}"><span class="team-name">${g.away}</span><span class="team-score">${g.awayScore}</span></div><div class="team-row ${homeWin?'winner':''}" style="margin-top:4px"><span class="team-name">${g.home}</span><span class="team-score">${g.homeScore}</span></div></div><div class="game-status">${g.status}</div></div>`;
+        }).join('');
+      } catch(e){ el.innerHTML=`<div class="err">Could not load NBA data.</div>`; }
+    }
+
+    async function loadNFL() {
+      const el = document.getElementById('nflArea');
+      try {
+        const raw = await callAPI(`Search the web for the top 4 most recent NFL news stories or transactions (trades, signings, injuries, scores) from today or this week. Return ONLY a JSON array (no markdown, no backticks) with keys: headline (string, max 80 chars), category (one word: Trade, Injury, Score, Signing, Draft, Rumor).`);
+        const items = JSON.parse(raw);
+        const catColor={Trade:'blue',Injury:'red',Score:'green',Signing:'green',Draft:'blue',Rumor:'gray'};
+        el.innerHTML=items.map((n,i)=>`<div class="card ${i===0?'hot':''}"><div class="card-title">${n.headline}</div><div class="card-meta"><span class="tag ${catColor[n.category]||'gray'}">${n.category}</span></div></div>`).join('');
+      } catch(e){ el.innerHTML=`<div class="err">Could not load NFL data.</div>`; }
+    }
+
+    async function loadYT() {
+      const el = document.getElementById('ytArea');
+      try {
+        const raw = await callAPI(`Search YouTube or the web for the top 5 trending Madden gameplay videos uploaded in the last 24-48 hours. Look for videos about Madden NFL gameplay, MUT (Madden Ultimate Team), Madden tips, Madden highlights, etc. Return ONLY a JSON array (no markdown, no backticks) with keys: title (string, max 80 chars), channel (string), views (string e.g. "142K"), tag (one word: MUT, Gameplay, Tips, Highlights, Draft, Pack).`);
+        const vids = JSON.parse(raw);
+        const tagColor={MUT:'',Gameplay:'blue',Tips:'green',Highlights:'green',Draft:'blue',Pack:''};
+        el.innerHTML=vids.map((v,i)=>`<div class="card ${i===0?'hot':''}"><div class="card-title">${v.title}</div><div class="card-meta"><span class="tag ${tagColor[v.tag]||''}">${v.tag}</span><span class="yt-views">${v.channel}</span><span class="muted">${v.views} views</span></div></div>`).join('');
+      } catch(e){ el.innerHTML=`<div class="err">Could not load YouTube data.</div>`; }
+    }
+
+    function loadAll() { loadWeather(); loadSP(); loadNBA(); loadNFL(); loadYT(); }
+    loadAll();
+  </script>
+</body>
+</html>
